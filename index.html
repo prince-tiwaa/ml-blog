@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why Your Model Is Only as Good as Your Scale | Feature Scaling</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f7f7f5;
+      --text: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --border: rgba(0,0,0,0.1);
+      --border-secondary: rgba(0,0,0,0.2);
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-light: #E1F5EE;
+      --coral: #D85A30;
+      --purple: #534AB7;
+      --info-bg: #E6F1FB;
+      --info-text: #185FA5;
+      --success-bg: #EAF3DE;
+      --success-text: #3B6D11;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --bg-secondary: #242424;
+        --text: #f0f0f0;
+        --text-secondary: #9a9a9a;
+        --border: rgba(255,255,255,0.1);
+        --border-secondary: rgba(255,255,255,0.2);
+        --green-light: #04342C;
+        --info-bg: #042C53;
+        --info-text: #85B7EB;
+        --success-bg: #173404;
+        --success-text: #C0DD97;
+      }
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lora', Georgia, serif;
+      line-height: 1.8;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 3rem 0 2rem;
+      border-bottom: 0.5px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+
+    .tag {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    h1 em { font-style: italic; font-weight: 400; }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      font-style: italic;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .byline { display: flex; align-items: center; gap: 12px; }
+
+    .avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .by-name { font-weight: 500; color: var(--text); font-size: 15px; }
+    .by-info { font-size: 13px; color: var(--text-secondary); }
+
+    .progress-bar { display: flex; gap: 4px; margin-bottom: 2rem; }
+    .pb-seg { height: 3px; border-radius: 2px; flex: 1; background: var(--border); }
+    .pb-seg.done { background: var(--green); }
+
+    .prose { font-size: 1rem; line-height: 1.9; color: var(--text); margin-bottom: 1.5rem; }
+    .prose strong { font-weight: 700; }
+
+    h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 2.5rem 0 1rem;
+      color: var(--text);
+    }
+
+    .section-num {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 0.5rem;
+    }
+
+    .pullquote {
+      border-left: 3px solid var(--green);
+      padding: 1rem 1.5rem;
+      margin: 2rem 0;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-style: italic;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+
+    .def-box {
+      border: 1.5px solid var(--green);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      background: var(--bg-secondary);
+    }
+
+    .def-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green-dark);
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+    }
+
+    .def-text {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: var(--text);
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+    }
+
+    .code-block {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .code-tag {
+      position: absolute; top: 8px; right: 10px;
+      font-size: 10px; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text-secondary);
+    }
+
+    .kw { color: var(--green); font-weight: 500; }
+    .cm { color: var(--text-secondary); font-style: italic; }
+    .str { color: var(--coral); }
+    .fn { color: var(--purple); }
+
+    .interactive-box {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin: 2rem 0;
+      background: var(--bg);
+    }
+
+    .ib-title {
+      font-size: 12px; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+    .slider-label { font-size: 13px; color: var(--text-secondary); min-width: 100px; }
+    .slider-val { font-size: 13px; font-weight: 500; min-width: 60px; text-align: right; font-family: 'Source Code Pro', monospace; }
+
+    input[type=range] { flex: 1; accent-color: var(--green); cursor: pointer; }
+
+    .viz { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 1.25rem; }
+
+    .viz-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .viz-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.5px; }
+    .viz-num { font-size: 1.6rem; font-weight: 700; font-family: 'Source Code Pro', monospace; }
+    .viz-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+    .viz-bar { height: 100%; border-radius: 4px; background: var(--green); transition: width 0.3s ease; }
+    .scaled-val { color: var(--green); }
+
+    .formula-display {
+      margin-top: 1rem;
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+    }
+
+    .table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'Source Code Pro', monospace; }
+
+    th {
+      background: var(--bg-secondary);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 500;
+      font-family: 'Lora', serif;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    .highlight-row td { background: var(--info-bg); color: var(--info-text); }
+
+    .technique-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1.5rem 0; }
+
+    .tcard {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+    }
+
+    .tcard.active { border-color: var(--green); border-width: 1.5px; }
+    .tcard-name { font-weight: 500; font-size: 14px; margin-bottom: 4px; color: var(--text); }
+    .tcard-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+    .tcard-formula {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 11px; margin-top: 6px;
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: var(--radius-md);
+      background: var(--success-bg);
+      color: var(--success-text);
+      margin-bottom: 8px;
+    }
+
+    .divider { height: 0.5px; background: var(--border); margin: 2.5rem 0; }
+
+    .callout {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .callout strong { color: var(--text); }
+
+    .takeaway-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 0.75rem 1rem;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+    }
+
+    .takeaway-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--green-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--green-dark);
+      flex-shrink: 0; font-weight: 700;
+    }
+
+    .takeaway-text { font-size: 14px; line-height: 1.6; }
+
+    .footer-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2rem; }
+
+    .ftag {
+      font-size: 12px;
+      padding: 4px 12px;
+      border: 0.5px solid var(--border-secondary);
+      border-radius: 20px;
+      color: var(--text-secondary);
+    }
+
+    .footer-bar {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-bar span { font-size: 13px; color: var(--text-secondary); }
+    .footer-bar strong { color: var(--text); }
+
+    code {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 13px;
+      background: var(--bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 520px) {
+      h1 { font-size: 1.8rem; }
+      .viz { grid-template-columns: 1fr; }
+      .technique-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="hero">
+      <div class="tag">Feature Scaling · Machine Learning</div>
+      <h1>Why Your Model Is Only as Good as <em>Your Scale</em></h1>
+      <p class="subtitle">A practical deep-dive into Feature Scaling — the preprocessing step most beginners skip, and why that's costing them accuracy.</p>
+      <div class="byline">
+        <div class="avatar">ML</div>
+        <div>
+          <div class="by-name">ML Enthusiast</div>
+          <div class="by-info">8 min read · Feature Scaling Series</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="pb-seg done"></div>
+      <div class="pb-seg done"></div>
+      <div class="pb-seg done"></div>
+      <div class="pb-seg"></div>
+      <div class="pb-seg"></div>
+    </div>
+
+    <p class="prose">You've cleaned your data. You've split it into train and test sets. You're ready to train. But have you looked at your feature ranges? One column might span <strong>0 to 500,000</strong> while another sits neatly between <strong>0 and 1</strong>. That imbalance is quietly sabotaging your model.</p>
+
+    <div class="section-num">Definition</div>
+    <h2>What is Feature Scaling?</h2>
+
+    <div class="def-box">
+      <div class="def-label">Feature Scaling — defined</div>
+      <div class="def-text">Feature Scaling is a data preprocessing technique that transforms the numerical features of a dataset to a common scale — without distorting the differences in the ranges of values or losing information. It ensures that no single feature dominates the learning process simply because of its unit or magnitude.</div>
+    </div>
+
+    <p class="prose">In plain terms: if your model sees one column with values in the thousands and another with values between 0 and 1, it will incorrectly assume the bigger numbers matter more. Feature scaling levels the playing field so your algorithm can focus on patterns, not units.</p>
+
+    <div class="pullquote">"Garbage in, garbage out" — but even good data at the wrong scale is still garbage to your algorithm.</div>
+
+    <div class="divider"></div>
+    <div class="section-num">Part 01</div>
+    <h2>The Problem: Unscaled Features</h2>
+
+    <p class="prose">Consider a housing dataset. It has a <code>housing_median_age</code> column (1–52) sitting next to <code>total_rooms</code> (2–39,320) and <code>median_income</code> (0–15). In algorithms like KNN or SVMs, larger numbers dominate distance calculations — even if they're not the most important features.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Min</th><th>Max</th><th>Range</th><th>Problem</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>housing_median_age</td><td>1</td><td>52</td><td>51</td><td style="color:#3B6D11">Reasonable</td></tr>
+          <tr class="highlight-row"><td>total_rooms</td><td>2</td><td>39,320</td><td>39,318</td><td>Dominates distance!</td></tr>
+          <tr><td>median_income</td><td>0.5</td><td>15.0</td><td>14.5</td><td style="color:var(--text-secondary)">Drowned out</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-num">Part 02</div>
+    <h2>The Solution: Min-Max Normalization</h2>
+
+    <p class="prose">Min-Max scaling compresses every feature into the range <strong>[0, 1]</strong> by comparing each value to the minimum and maximum of that column.</p>
+
+    <div class="code-block">
+      <span class="code-tag">Formula</span>
+      <span class="kw">x_scaled</span> = (x &minus; x_min) / (x_max &minus; x_min)
+    </div>
+
+    <div class="code-block">
+      <span class="code-tag">Python</span>
+      <span class="kw">import</span> pandas <span class="kw">as</span> pd<br><br>
+      df = pd.<span class="fn">read_csv</span>(<span class="str">"housing_dataset.csv"</span>)<br><br>
+      cols_to_scale = (<span class="str">"housing_median_age"</span>, <span class="str">"total_rooms"</span>, <span class="str">"median_income"</span>)<br><br>
+      <span class="kw">for</span> col <span class="kw">in</span> cols_to_scale:<br>
+      &nbsp;&nbsp;col_min = df[col].<span class="fn">min</span>()<br>
+      &nbsp;&nbsp;col_max = df[col].<span class="fn">max</span>()<br>
+      &nbsp;&nbsp;df[col + <span class="str">"_scaled"</span>] = (df[col] &minus; col_min) / (col_max &minus; col_min)<br><br>
+      <span class="cm"># Verify output is in [0, 1]</span><br>
+      <span class="kw">for</span> col <span class="kw">in</span> cols_to_scale:<br>
+      &nbsp;&nbsp;scaled = col + <span class="str">"_scaled"</span><br>
+      &nbsp;&nbsp;<span class="fn">print</span>(f<span class="str">"{scaled}: min={df[scaled].min():.2f} max={df[scaled].max():.2f}"</span>)
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-num">Part 03 — Interactive</div>
+    <h2>Try It Yourself</h2>
+
+    <p class="prose">Drag the sliders to see how min-max scaling transforms a raw value in real time. Watch how any input gets compressed to the [0, 1] range.</p>
+
+    <div class="interactive-box">
+      <div class="ib-title">Live Min-Max Scaler — total_rooms column</div>
+
+      <div class="slider-row">
+        <span class="slider-label">Raw value</span>
+        <input type="range" id="rawVal" min="2" max="39320" value="5000" step="1">
+        <span class="slider-val" id="rawOut">5,000</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Column min</span>
+        <input type="range" id="minVal" min="0" max="5000" value="2" step="1">
+        <span class="slider-val" id="minOut">2</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Column max</span>
+        <input type="range" id="maxVal" min="5000" max="40000" value="39320" step="1">
+        <span class="slider-val" id="maxOut">39,320</span>
+      </div>
+
+      <div class="viz">
+        <div class="viz-card">
+          <div class="viz-label">Raw value</div>
+          <div class="viz-num" id="displayRaw" style="color:var(--text)">5,000</div>
+          <div class="viz-bar-wrap"><div class="viz-bar" id="rawBar" style="width:12%;background:var(--border-secondary)"></div></div>
+        </div>
+        <div class="viz-card">
+          <div class="viz-label">Scaled value</div>
+          <div class="viz-num scaled-val" id="displayScaled">0.1270</div>
+          <div class="viz-bar-wrap"><div class="viz-bar" id="scaledBar" style="width:12%"></div></div>
+        </div>
+      </div>
+
+      <div class="formula-display" id="formulaDisplay"></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-num">Part 04</div>
+    <h2>When to Use Which Scaling Technique</h2>
+
+    <p class="prose">Min-Max isn't always the right tool. Here's how the most common scaling techniques compare:</p>
+
+    <div class="technique-grid">
+      <div class="tcard active">
+        <div class="badge">used in notebook</div>
+        <div class="tcard-name">Min-Max Normalization</div>
+        <div class="tcard-desc">Best when you need values in a bounded range. Sensitive to outliers.</div>
+        <div class="tcard-formula">(x &minus; min) / (max &minus; min)</div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-name">Standard Scaling (Z-score)</div>
+        <div class="tcard-desc">Centers data around mean=0, std=1. Robust to outliers. Great for linear models.</div>
+        <div class="tcard-formula">(x &minus; mean) / std</div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-name">Robust Scaling</div>
+        <div class="tcard-desc">Uses median and IQR. Best when outliers are frequent.</div>
+        <div class="tcard-formula">(x &minus; median) / IQR</div>
+      </div>
+      <div class="tcard">
+        <div class="tcard-name">Log Transform</div>
+        <div class="tcard-desc">Reduces right-skewed distributions. Use on income, price, count data.</div>
+        <div class="tcard-formula">log(x + 1)</div>
+      </div>
+    </div>
+
+    <div class="callout"><strong>Quick rule:</strong> Neural networks and KNN &rarr; Min-Max. Linear/Logistic Regression &rarr; Standard Scaling. Many outliers &rarr; Robust Scaling. Skewed distributions &rarr; Log Transform.</div>
+
+    <div class="divider"></div>
+    <div class="section-num">Part 05</div>
+    <h2>Key Takeaways</h2>
+
+    <div class="takeaway-item">
+      <div class="takeaway-num">1</div>
+      <div class="takeaway-text"><strong>Always scale after the train/test split</strong> — fit the scaler only on training data to avoid data leakage.</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">2</div>
+      <div class="takeaway-text"><strong>Not all features need scaling</strong> — binary columns and already-normalized features can be left as-is.</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">3</div>
+      <div class="takeaway-text"><strong>Verify your output</strong> — always print min/max of scaled columns to confirm they're in the expected range.</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">4</div>
+      <div class="takeaway-text"><strong>Tree-based models</strong> (Random Forest, XGBoost) are invariant to scaling — you can skip this step for those.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="pullquote">The best ML practitioners don't just transform data — they understand why each transformation makes their model smarter.</div>
+
+    <div class="footer-tags">
+      <span class="ftag">Machine Learning</span>
+      <span class="ftag">Feature Scaling</span>
+      <span class="ftag">Python</span>
+      <span class="ftag">Data Science</span>
+      <span class="ftag">Pandas</span>
+      <span class="ftag">Beginners Guide</span>
+    </div>
+
+    <div class="footer-bar">
+      <span>Part of the <strong>Feature Scaling for ML</strong> series</span>
+    </div>
+
+  </div>
+
+  <script>
+    function update() {
+      const raw = +document.getElementById('rawVal').value;
+      const mn  = +document.getElementById('minVal').value;
+      const mx  = +document.getElementById('maxVal').value;
+
+      document.getElementById('rawOut').textContent  = raw.toLocaleString();
+      document.getElementById('minOut').textContent  = mn.toLocaleString();
+      document.getElementById('maxOut').textContent  = mx.toLocaleString();
+      document.getElementById('displayRaw').textContent = raw.toLocaleString();
+
+      const range  = mx - mn;
+      const scaled = range > 0 ? Math.min(1, Math.max(0, (raw - mn) / range)) : 0;
+
+      document.getElementById('displayScaled').textContent = scaled.toFixed(4);
+      document.getElementById('rawBar').style.width    = Math.min(100, ((raw - 2) / (39320 - 2)) * 100).toFixed(1) + '%';
+      document.getElementById('scaledBar').style.width = (scaled * 100).toFixed(1) + '%';
+      document.getElementById('formulaDisplay').innerHTML =
+        '(' + raw.toLocaleString() + ' &minus; ' + mn.toLocaleString() +
+        ') / (' + mx.toLocaleString() + ' &minus; ' + mn.toLocaleString() +
+        ') = <strong style="color:#1D9E75">' + scaled.toFixed(4) + '</strong>';
+    }
+
+    ['rawVal', 'minVal', 'maxVal'].forEach(id =>
+      document.getElementById(id).addEventListener('input', update)
+    );
+    update();
+  </script>
+</body>
+</html>
